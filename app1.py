@@ -1,16 +1,15 @@
+import os
 import sys
 import json
 import re
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget, QComboBox
 from pptx import Presentation
 from pptx.util import Inches
 
 # ✅ 성경 데이터 불러오기
-def load_bible():
-    with open("C:/Python/bible.json", "r", encoding="utf-8-sig") as f:
+def load_bible(file_path):
+    with open(file_path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
-
-bible_data = load_bible()  # 성경 데이터 로드
 
 # ✅ 책 이름 약어 변환 딕셔너리 (전체)
 book_abbreviations = {
@@ -82,7 +81,7 @@ book_abbreviations = {
     "요한계시록": "계", "계시": "계", "ㅇㅎㄱㅅㄹ": "계"
 }
 
-# ✅ 검색어 변환 함수 (수정됨)
+# ✅ 검색어 변환 함수 
 def parse_query(query):
     query = re.sub(r'\s+|장|절', '', query).replace(',', ':')
     pattern = r'^([가-힣ㄱ-ㅎ]+)?\s*(\d+):(\d+)(?:-(\d+))?$'
@@ -107,12 +106,12 @@ from pptx.dml.color import RGBColor
 
 def create_ppt(book, chapter, verse_range, text):
     prs = Presentation()
-    prs.slide_width = Inches(16)
-    prs.slide_height = Inches(9)
+    prs.slide_width = Inches(10)
+    prs.slide_height = Inches(5.62598425)
     
     # 본문 분할 (4절 단위)
     verses = text.split('\n')[2:]
-    slide_groups = [verses[i:i+4] for i in range(0, len(verses), 4)]
+    slide_groups = [verses[i:i+3] for i in range(0, len(verses), 3)]
     
     for group in slide_groups:
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -124,10 +123,10 @@ def create_ppt(book, chapter, verse_range, text):
         
         # 텍스트 상자 설정 (변경 부분)
         textbox = slide.shapes.add_textbox(
-            left=Inches(0.1),  # 좌측 여백 증가
-            top=Inches(0.25),   # 상단 여백 증가
-            width=Inches(15.5),  # 폭 조정
-            height=Inches(7)   # 높이 조정
+            left=Inches(0.15),  # 좌측 여백 증가
+            top=Inches(0.2),   # 상단 여백 증가
+            width=Inches(9.8),  # 폭 조정
+            height=Inches(5.25984251)   # 높이 조정
         )
         tf = textbox.text_frame
         tf.word_wrap = True    # ✅ 줄바꿈 활성화
@@ -137,7 +136,7 @@ def create_ppt(book, chapter, verse_range, text):
         title = tf.add_paragraph()
         title.text = f"[{book} {chapter}:{verse_range}]"
         title.font.name = '맑은 고딕'
-        title.font.size = Pt(28)
+        title.font.size = Pt(27)
         title.font.color.rgb = RGBColor(255, 255, 0)
         title.font.bold = True  # 볼드 처리
         title.alignment = PP_ALIGN.LEFT
@@ -147,9 +146,15 @@ def create_ppt(book, chapter, verse_range, text):
             verse_text = verse.strip()
             if verse_text:
                 p = tf.add_paragraph()
-                p.text = verse_text
+                 # 절 번호와 내용을 분리하고 콜론을 제거합니다
+                verse_parts = verse_text.split(':', 1)
+                if len(verse_parts) == 2:
+                    verse_num, verse_content = verse_parts
+                    p.text = f"{verse_num} {verse_content.strip()}"
+                else:
+                    p.text = verse_text
                 p.font.name = '맑은 고딕'
-                p.font.size = Pt(28)
+                p.font.size = Pt(27)
                 p.font.color.rgb = RGBColor(255, 255, 255)
                 p.font.bold = True  # 볼드 처리
                 p.alignment = PP_ALIGN.LEFT
@@ -163,8 +168,15 @@ def create_ppt(book, chapter, verse_range, text):
 class BibleSearchApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.load_bible_data()
         self.initUI()
 
+    def load_bible_data(self):
+        self.bible_data = {
+        "개역개정": load_bible("C:/Python/bible.json"),
+        "새번역": load_bible("C:/Python/new_bible.json")
+    }
+            
     def initUI(self):
         self.setWindowTitle('성경 검색 프로그램')
         self.setGeometry(100, 100, 600, 400)
@@ -173,11 +185,14 @@ class BibleSearchApp(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
 
+        self.version_select = QComboBox()
+        self.version_select.addItems(["개역개정", "새번역"])
         self.search_input = QLineEdit()
         self.search_button = QPushButton('검색')
         self.result_text = QTextEdit()
         self.ppt_button = QPushButton('PPT 생성')
 
+        layout.addWidget(self.version_select)
         layout.addWidget(self.search_input)
         layout.addWidget(self.search_button)
         layout.addWidget(self.result_text)
@@ -185,9 +200,11 @@ class BibleSearchApp(QMainWindow):
 
         self.search_button.clicked.connect(self.search_bible)
         self.ppt_button.clicked.connect(self.generate_ppt)
+        self.search_input.returnPressed.connect(self.search_bible)
 
     def search_bible(self):
         search_query = self.search_input.text()
+        selected_version = self.version_select.currentText()
         book, chapter, start_verse, end_verse = parse_query(search_query)
 
         if book and chapter and start_verse:
@@ -195,7 +212,7 @@ class BibleSearchApp(QMainWindow):
             end_key = f"{book}{chapter}:{end_verse}" if end_verse else start_key
             
             verses = {}
-            for k, v in bible_data.items():
+            for k, v in self.bible_data[selected_version].items():
                 if k.startswith(f"{book}{chapter}:"):
                     verse_num = int(k.split(':')[1])
                     if int(start_verse) <= verse_num <= (int(end_verse) if end_verse else int(start_verse)):
