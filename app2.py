@@ -1,19 +1,32 @@
-import os
-import sys
+# import : 다른 모듈이나 라이브러리의 코드를 사용할 수 있게 해주는 키워드
+# sys모듈은 파이썬이 실행되는 환경과 소통하는 도구
+# re모듈은 정규표현식을 사용할 수 있게 해주는 search(), match(), split(), findall().. 등등
+import sys   
 import json
 import re
+# PyQt5 라이브러리의 QtWidgets 모듈에서 특정 클래스들을 가져오는 것
+# QApplication: PyQt5 애플리케이션의 기본 클래스로, 모든 GUI 프로그램에 필요합니다.
+# QMainWindow: 메인 윈도우를 생성하는 클래스
+# QLineEdit: 한 줄의 텍스트를 입력받는 위젯
+# QPushButton: 클릭 가능한 버튼을 생성하는 클래스
+# QTextEdit: 여러 줄의 텍스트를 입력하거나 표시할 수 있는 위젯
+# QVBoxLayout: 위젯들을 수직으로 배열하는 레이아웃 클래스
+# QWidget: 모든 UI 객체의 기본 클래스로, 다른 위젯들의 컨테이너 역할
+# QComboBox: 드롭다운 목록을 제공하는 위젯
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget, QComboBox
+# python-pptx 라이브러리에서 Presentation 클래스를 가져오는 import 문
 from pptx import Presentation
+# python-pptx 라이브러리의 util 모듈에서 Inches 클래스를 가져오는 Inches 클래스는 길이를 인치 단위로 쉽게 지정할 수 있게 해주는 편리한 생성자
 from pptx.util import Inches
 
-data_path = os.getcwd()
-
 # ✅ 성경 데이터 불러오기
-def load_bible(file_path):
-    with open(file_path, "r", encoding="utf-8-sig") as f:
-        return json.load(f)
+#def 새로운 함수를 정의할 때 사용
+def load_bible(file_path):   #load_bible 이라는 함수정의 file_path라는 매개변수를 받는다 
+    with open(file_path, "r", encoding="utf-8-sig") as f: #with문은 파일을 자동으로 닫아줌,
+        return json.load(f) #열린 파일 객체 'f'에서 json데이터를 파이썬 객체로 변환후 반환해줌줌
 
 # ✅ 책 이름 약어 변환 딕셔너리 (전체)
+# 딕셔너리 형태의 약어 설정 , {Key : value} 형태로 key를 입력하면 value가 호출됨 
 book_abbreviations = {
     "창세기": "창", "창세": "창", "창": "창", "ㅊ": "창",
     "출애굽기": "출", "출애": "출", "출": "출", "ㅊㅇ": "출",
@@ -85,18 +98,18 @@ book_abbreviations = {
 
 # ✅ 검색어 변환 함수 
 def parse_query(query):
-    query = re.sub(r'\s+|장|절', '', query).replace(',', ':')
-    pattern = r'^([가-힣ㄱ-ㅎ]+)?\s*(\d+):(\d+)(?:-(\d+))?$'
-    match = re.match(pattern, query)
+    #re.sub 문자치열함수
+    query = re.sub(r'\s+|장|절', '', query).replace(',', ':') # 주어진 문자열(auery)을 특정패턴(r'\s+|장|절')을 찾아아 다른 문자열('')로 대체
+    pattern = r'^([가-힣ㄱ-ㅎ]+)?\s*(\d+):(\d+)(?:-(\d+))?$' # 검색어 분석을 위한 정규표현식의 패턴정의
+    match = re.match(pattern, query) # pattern으로 정의된 정규표현식 패턴과 'query'문자열을 매칭시킴
 
     if not match:
         return None, None, None, None
 
-    book, chapter, start_verse, end_verse = match.groups()
+    book, chapter, start_verse, end_verse = match.groups() # 정규 표현식의 각 괄호로 묶인 그룹에 해당하는 문자열들을 튜플로 반환
     
-    if book:
-        book = book_abbreviations.get(book, book)
-    print(book)
+    if book: # book인 변수가 '참'일 때 실행, 문자열이 비어있지 않으면 '참'
+        book = book_abbreviations.get(book, book) # get() 딕셔너리에서 키를 찾아 값을 반환, 첫번째인자는 찾고자 하는 '키', 두번째인자는 키가 없을 때 반환 시킬 '기본값'
     
     return book, chapter, start_verse, end_verse or start_verse
 
@@ -126,8 +139,8 @@ def create_ppt(book, chapter, verse_range, text):
         
         # 텍스트 상자 설정 (변경 부분)
         textbox = slide.shapes.add_textbox(
-            left=Inches(0.15),  # 좌측 여백 증가
-            top=Inches(0.2),   # 상단 여백 증가
+            left=Inches(0.1),  # 좌측 여백 증가
+            top=Inches(0.15),   # 상단 여백 증가
             width=Inches(9.8),  # 폭 조정
             height=Inches(5.25984251)   # 높이 조정
         )
@@ -149,7 +162,7 @@ def create_ppt(book, chapter, verse_range, text):
             verse_text = verse.strip()
             if verse_text:
                 p = tf.add_paragraph()
-                 # 절 번호와 내용을 분리하고 콜론을 제거합니다
+                # 절 번호와 내용을 분리하고 콜론을 제거합니다
                 verse_parts = verse_text.split(':', 1)
                 if len(verse_parts) == 2:
                     verse_num, verse_content = verse_parts
@@ -176,8 +189,8 @@ class BibleSearchApp(QMainWindow):
 
     def load_bible_data(self):
         self.bible_data = {
-        "개역개정": load_bible(data_path + "/bible.json"),
-        "새번역": load_bible(data_path + "/new_bible.json")
+        "개역개정": load_bible("C:/Python/bible.json"),
+        "새번역": load_bible("C:/Python/new_bible.json")
     }
             
     def initUI(self):
@@ -245,4 +258,3 @@ if __name__ == '__main__':
     ex = BibleSearchApp()
     ex.show()
     sys.exit(app.exec_())
-
