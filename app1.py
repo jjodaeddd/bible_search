@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import re
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget, QComboBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget, QRadioButton, QButtonGroup, QHBoxLayout
 from pptx import Presentation
 from pptx.util import Inches
 
@@ -96,7 +96,6 @@ def parse_query(query):
     
     if book:
         book = book_abbreviations.get(book, book)
-    print(book)
     
     return book, chapter, start_verse, end_verse or start_verse
 
@@ -182,20 +181,35 @@ class BibleSearchApp(QMainWindow):
             
     def initUI(self):
         self.setWindowTitle('성경 검색 프로그램')
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(300, 200, 800, 600)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
 
-        self.version_select = QComboBox()
-        self.version_select.addItems(["개역개정", "새번역"])
+        # 라디오 버튼 생성
+        self.version_group = QButtonGroup(self)
+        version_layout = QHBoxLayout()
+    
+        self.radio_개역개정 = QRadioButton("개역개정")
+        self.radio_새번역 = QRadioButton("새번역")
+    
+        self.version_group.addButton(self.radio_개역개정)
+        self.version_group.addButton(self.radio_새번역)
+    
+        version_layout.addWidget(self.radio_개역개정)
+        version_layout.addWidget(self.radio_새번역)
+    
+        # 기본값 설정
+        self.radio_개역개정.setChecked(True)
+
+        layout.addLayout(version_layout)
+    
         self.search_input = QLineEdit()
         self.search_button = QPushButton('검색')
         self.result_text = QTextEdit()
         self.ppt_button = QPushButton('PPT 생성')
 
-        layout.addWidget(self.version_select)
         layout.addWidget(self.search_input)
         layout.addWidget(self.search_button)
         layout.addWidget(self.result_text)
@@ -207,7 +221,7 @@ class BibleSearchApp(QMainWindow):
 
     def search_bible(self):
         search_query = self.search_input.text()
-        selected_version = self.version_select.currentText()
+        selected_version = "개역개정" if self.radio_개역개정.isChecked() else "새번역"
         book, chapter, start_verse, end_verse = parse_query(search_query)
 
         if book and chapter and start_verse:
@@ -245,4 +259,3 @@ if __name__ == '__main__':
     ex = BibleSearchApp()
     ex.show()
     sys.exit(app.exec_())
-
