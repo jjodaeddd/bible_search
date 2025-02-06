@@ -2,9 +2,11 @@ import os
 import sys
 import json
 import re
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget, QRadioButton, QButtonGroup, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget, QRadioButton, QButtonGroup, QHBoxLayout, QMessageBox
 from pptx import Presentation
 from pptx.util import Inches
+from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt
 
 data_path = os.getcwd()
 
@@ -168,6 +170,7 @@ def create_ppt(book, chapter, verse_range, text):
 
 
 class BibleSearchApp(QMainWindow):
+    
     def __init__(self):
         super().__init__()
         self.load_bible_data()
@@ -180,35 +183,83 @@ class BibleSearchApp(QMainWindow):
     }
             
     def initUI(self):
+        
         self.setWindowTitle('성경 검색 프로그램')
-        self.setGeometry(300, 200, 800, 600)
+        self.setGeometry(300, 200, 1600, 1200)
 
         central_widget = QWidget()
+        central_widget.setSizePolicy(1200,1000)
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
+        layout.addStretch
+        
+
+        # font = self.font()
+        # font.setFamily("맑은 고딕")  # 프로그램 폰트 이름으로 변경
+        # font.setPointSize(12)  # 프로그램 폰트트 크기로 변경
+        # QApplication.setFont(font)
+        # 이건 프로그램 전체적인 폰트를 조절하는 코드드
 
         # 라디오 버튼 생성
         self.version_group = QButtonGroup(self)
         version_layout = QHBoxLayout()
-    
+
         self.radio_개역개정 = QRadioButton("개역개정")
         self.radio_새번역 = QRadioButton("새번역")
-    
+
         self.version_group.addButton(self.radio_개역개정)
         self.version_group.addButton(self.radio_새번역)
-    
+
+        # 버전 선택 라디오 버튼 레이아웃 설정
+        # version_layout.setAlignment(Qt.AlignLeft)  # 왼쪽 정렬
+        version_layout.setContentsMargins(0, 10, 10, 10)  # 여백 추가
+        # version_layout.addStretch(0)  # 왼쪽에 신축성 있는 공간 추가
+        version_layout.addWidget(self.radio_개역개정)
+        # version_layout.addSpacing(20)  # 버튼 사이 간격 추가
+        version_layout.addWidget(self.radio_새번역)
+        # version_layout.addStretch(13)  # 오른쪽에 신축성 있는 공간 추가
+
+        # PPT 생성 옵션 라디오 버튼 추가
+        self.ppt_group = QButtonGroup(self)
+        ppt_layout = QHBoxLayout()
+
+        self.radio_ppt_yes = QRadioButton("PPT 자동생성")  
+        self.radio_ppt_no = QRadioButton("PPT 생성 안 함") 
+
+        self.ppt_group.addButton(self.radio_ppt_yes)
+        self.ppt_group.addButton(self.radio_ppt_no)
+
         version_layout.addWidget(self.radio_개역개정)
         version_layout.addWidget(self.radio_새번역)
-    
+
+        # ppt_layout.setAlignment(Qt.AlignLeft)  # 왼쪽 정렬
+        ppt_layout.setContentsMargins(0, 10, 10, 10)  # 여백 추가
+        # ppt_layout.addStretch(1)  # 왼쪽에 신축성 있는 공간 추가
+        ppt_layout.addWidget(self.radio_ppt_yes)
+        # ppt_layout.addSpacing(10)  # 버튼 사이 간격 추가
+        ppt_layout.addWidget(self.radio_ppt_no)
+        # ppt_layout.addStretch(10)  # 오른쪽에 신축성 있는 공간 추가
+
+        ppt_layout.addWidget(self.radio_ppt_yes)
+        ppt_layout.addWidget(self.radio_ppt_no)
+
         # 기본값 설정
         self.radio_개역개정.setChecked(True)
+        self.radio_ppt_no.setChecked(True)
 
-        layout.addLayout(version_layout)
-    
+        layout.addLayout(version_layout)  # 중복 제거 후 추가
+        layout.addLayout(ppt_layout)  
+
+        # 프로그램 
         self.search_input = QLineEdit()
+        self.search_input.setFont(QFont("맑은 고딕", 15))
         self.search_button = QPushButton('검색')
-        self.result_text = QTextEdit()
-        self.ppt_button = QPushButton('PPT 생성')
+        self.search_button.setFont(QFont("맑은 고딕", 13))
+        self.result_text = QTextEdit("검색형식 ex) 출1:1, 출1:1-5 <br> 약어 (출, 출애, ㅊㅇ)")
+        self.result_text.setFont(QFont("맑은 고딕", 13))
+        self.ppt_button = QPushButton('PPT 저장')
+        self.ppt_button.setFont(QFont("맑은 고딕", 12))
+        self.ppt_button.setEnabled(False)  
 
         layout.addWidget(self.search_input)
         layout.addWidget(self.search_button)
@@ -216,12 +267,15 @@ class BibleSearchApp(QMainWindow):
         layout.addWidget(self.ppt_button)
 
         self.search_button.clicked.connect(self.search_bible)
-        self.ppt_button.clicked.connect(self.generate_ppt)
         self.search_input.returnPressed.connect(self.search_bible)
+        self.ppt_button.clicked.connect(self.save_ppt)  # 이벤트 연결을 올바른 위치로 이동
+
+        self.ppt_file = None  # PPT 파일 경로 변수 초기화
 
     def search_bible(self):
         search_query = self.search_input.text()
         selected_version = "개역개정" if self.radio_개역개정.isChecked() else "새번역"
+        
         book, chapter, start_verse, end_verse = parse_query(search_query)
 
         if book and chapter and start_verse:
@@ -244,15 +298,38 @@ class BibleSearchApp(QMainWindow):
                     result += f"{verse_num}: {v}\n"
                 
                 self.result_text.setText(result)
-                self.ppt_file = create_ppt(book_name, chapter, f"{start_verse}-{end_verse}", result)
+
+                # 🔹 검색 후 PPT 저장 버튼 활성화
+                self.ppt_button.setEnabled(True)
+
+                # 🔹 PPT 자동 생성이 선택된 경우, 미리 파일 경로를 저장
+                self.ppt_file = None  # 초기화
+                if self.radio_ppt_yes.isChecked():
+                    self.ppt_file = create_ppt(book_name, chapter, f"{start_verse}-{end_verse}", result)
+                    QMessageBox.information(self, "PPT 생성 완료", "PPT 파일이 자동으로 생성되었습니다.")
             else:
                 self.result_text.setText("해당 구절을 찾을 수 없습니다.")
+                self.ppt_button.setEnabled(False)  
         else:
             self.result_text.setText("올바른 검색 형식이 아닙니다.")
+            self.ppt_button.setEnabled(False)  
 
-    def generate_ppt(self):
-        # PPT 생성 로직 구현 (이미 search_bible에서 생성됨)
-        pass
+    def save_ppt(self):
+        search_query = self.search_input.text()
+        selected_version = "개역개정" if self.radio_개역개정.isChecked() else "새번역"
+        
+        book, chapter, start_verse, end_verse = parse_query(search_query)
+
+        if book and chapter and start_verse:
+            book_name = next((k for k, v in book_abbreviations.items() if v == book), book)
+            verse_range = f"{start_verse}-{end_verse}"
+            text = self.result_text.toPlainText()
+
+            # 🔹 PPT가 미리 생성되지 않은 경우 여기서 생성
+            if not self.ppt_file:
+                self.ppt_file = create_ppt(book_name, chapter, verse_range, text)
+
+            QMessageBox.information(self, "PPT 저장 완료", f"PPT 파일이 저장되었습니다: {self.ppt_file}")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
